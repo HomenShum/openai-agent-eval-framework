@@ -1,10 +1,10 @@
 # OpenAI Evaluation Backend
 
-A production-ready backend for prototyping and evaluating agentic AI workflows. Built with Next.js Route Handlers, powered by the OpenAI SDK, and includes deterministic testing for reliable evaluations without production authentication.
+Reference TypeScript route handlers and a Jest evaluation harness for prototyping agent workflows. The tests supply substitutes for dependencies from the original host application. This checkout is not a standalone server and uses deterministic test identities rather than production authentication.
 
 ## 🚀 What This Does
 
-This backend provides battle-tested infrastructure for:
+The source provides reference examples for:
 - **Agentic Workflows** - Multi-tool orchestration with streaming responses
 - **JSON Extraction** - Structured output with schema enforcement
 - **Embeddings** - Vector generation with built-in retry logic
@@ -13,52 +13,56 @@ This backend provides battle-tested infrastructure for:
 
 ## 🎯 Key Features
 
-- ✅ **Production-Ready Routes** - Drop into any Next.js/Remix/Express app
+- **Route handler examples** - Adapt handlers, dependencies and authentication in your host application
 - ✅ **Streaming SSE Support** - Real-time agent execution traces
-- ✅ **Zero-Cost Testing** - Mocked tests run without OpenAI credits
-- ✅ **Deterministic Evaluation** - Reproducible results for CI/CD
+- **Mocked route tests** - SDK substitutes exercise handler behavior without real provider credentials
+- **Toy evaluation fixtures** - Source-defined metrics for local experiments; current results require a fresh run
 - ✅ **Multi-User Simulation** - Test different user contexts easily
 
 ## 📦 Installation
 
 ### Prerequisites
-- Node.js 18.17+ (for native fetch/streams support)
-- npm or yarn
-- OpenAI API key (optional for live testing)
 
-### Quick Setup
+- Node.js satisfying the declared package engine, `>=18.17`.
+- npm; this repository includes a package-lock.json.
+- A real OpenAI key is optional for intentionally selected provider-backed checks, not the default mocked route tests.
 
-1. **Clone and install**
+### Clone and install
+
 ```bash
 git clone https://github.com/HomenShum/openai-agent-eval-framework
-cd openai-eval-backend
-npm install
+cd openai-agent-eval-framework
+npm ci
 ```
 
-2. **Configure environment**
+The npm package is named `openai-eval-backend`; that is different from the directory Git creates above. Installation and current test results must be established in your own environment.
+
+### Select the mocked route tests
+
+Keep `OPENAI_API_KEY` unset when Jest reads its configuration. Choose the example for your shell:
+
 ```bash
-# Copy template
-cp .env.example .env
-
-# Add your OpenAI key (optional - only for live tests)
-# Mocked tests work without this
-echo "OPENAI_API_KEY=sk-your-key" >> .env
+# Bash
+unset OPENAI_API_KEY
+npm test -- --runInBand
 ```
 
-3. **Verify installation**
-```bash
-# Run mocked tests (no API key needed)
-npm test
-
-# Run with live API (if key is set)
-$env:OPENAI_API_KEY=sk-your-key
-npm test
+```powershell
+# PowerShell
+Remove-Item Env:OPENAI_API_KEY -ErrorAction SilentlyContinue
+npm test -- --runInBand
 ```
+
+With no key, the current Jest configuration excludes the entire `openai/__tests__/` subtree. The adjacent route tests set their own dummy key and mock the SDK. This is a subset of the repository tests, not a complete live evaluation.
+
+### Environment configuration
+
+There is no committed `.env.example`, and the package scripts and Jest configuration do not load dotenv files. No environment file is required for the mocked selection above. For provider-backed checks, configure process variables in the terminal you intend to use, then select an exact test as described below. Merely creating a `.env` file does not implement loading.
 
 ## 🏗️ Project Structure
 
 ```
-openai-eval-backend/
+openai-agent-eval-framework/
 ├── openai/                    # Core route handlers
 │   ├── agent/                 # Multi-tool agent orchestration
 │   ├── ask/                   # Simple chat completions
@@ -80,17 +84,11 @@ openai-eval-backend/
 
 ## 🔧 Usage
 
-### Integration with Next.js
+### Integration with a host application
 
-Drop any route directly into your Next.js app:
+The handlers import host-framework and application modules. Jest maps `next/server`, `@/...`, Pinecone, Pusher and UUID imports to local substitutes in [jest.config.ts](jest.config.ts). Those test mappings are not a deployed backend.
 
-```typescript
-// app/api/llm/openai/ask/route.ts
-export { POST } from "openai/ask/route";
-
-// app/api/llm/openai/agent/route.ts
-export { POST } from "openai/agent/route";
-```
+To integrate a handler, adapt its imports and dependencies to your host layout, provide real identity/ownership checks, and mount it at your chosen route. The package has no `dev`, `start` or server-build script. The paths below describe reference handlers; this repository alone does not serve these URLs.
 
 ### Available Endpoints
 
@@ -105,6 +103,8 @@ export { POST } from "openai/agent/route";
 | `/organization-mode` | Hierarchical outlines | Note-taking, documentation |
 
 ### Example: Agent Workflow
+
+This request shape assumes your host application has mounted the agent handler at the illustrated URL.
 
 ```javascript
 // Request
@@ -128,46 +128,56 @@ const reader = response.body.getReader();
 
 ## 🧪 Testing & Evaluation
 
-### Test Modes
+### Test selection
 
-The test suite intelligently adapts based on environment:
+[Jest configuration](jest.config.ts) reads key presence before test discovery:
 
-| Mode | Condition | Use Case |
-|------|-----------|----------|
-| **Mocked** | No API key | Fast, deterministic, CI/CD |
-| **Live** | API key present | Real model behavior testing |
-| **Hybrid** | Mixed config | Development iteration |
+| Process configuration | Discovery and behavior |
+|-----------------------|------------------------|
+| `OPENAI_API_KEY` absent | All of `openai/__tests__/` is excluded, including mini-eval and SSE-capture files there; adjacent mocked route tests remain selected. |
+| `OPENAI_API_KEY` present | That directory becomes eligible too. Existing mocked tests remain mocked; selected live files have their own guards and may call provider APIs. |
 
-### Running Tests
+Key presence does not turn every test into a live test. Known agent scenarios may also use preflight behavior automatically under Jest via `JEST_WORKER_ID` in [agent helpers](openai/agent/helpers.ts).
+
+### Running a specific mocked test
+
+With the key unset as in setup:
 
 ```bash
-# All tests (auto-detects mode)
-npm test
-
-# Specific test file
-npx jest openai/agent/e2e.agent.test.ts
-
-# Pattern matching
-npx jest --testNamePattern="E2E: Agent"
-
-# Live tests only (requires API key)
-OPENAI_API_KEY=sk-your-key npx jest openai/__tests__/live.*.test.ts
+npm test -- --runInBand openai/agent/e2e.agent.graph-actions.test.ts
 ```
 
-### Demo Commands
+### Intentionally selected provider-backed checks
+
+After configuring `OPENAI_API_KEY` in the current terminal, this exact file contains SDK/route smoke checks:
 
 ```bash
-# Capture deterministic SSE trace
-npm run -s demo:capture-sse
+npm test -- --runInBand openai/__tests__/live.smoke.test.ts
+```
 
-# Live SSE capture (requires API key)
-npm run -s demo:capture-sse:live
+The base smoke file enables its provider checks from key presence alone. Omitting `OPENAI_REAL_TESTS`, or setting it to `0`, does not disable that file. A broad `npm test` in a keyed terminal can therefore include provider calls.
 
-# Run mini evaluation suite
+Inspect the selected suite's guards before running it. Only the saved-log evaluator shown next additionally requires a nonempty `OPENAI_REAL_TESTS` value and an existing smoke log. For example, in Bash, with the key already configured:
+
+```bash
+OPENAI_REAL_TESTS=1 npm test -- --runInBand openai/__tests__/live.smoke.eval.test.ts
+```
+
+This flag uses truthiness in the source: setting it to `0` does not disable the judge. A provider key, a file named `live`, or a skipped suite is not proof that a model workflow completed.
+
+### Dataset and capture demos
+
+The compact script reads committed toy datasets and [local scoring code](lib/eval/mini.ts), independently of Jest discovery:
+
+```bash
 npm run -s demo:eval:compact
 ```
 
-## 📊 Master test summary (snapshot)
+The package also defines `demo:eval`, `demo:capture-sse` and `demo:capture-sse:live`. They target Jest files under the excluded subtree, so they are not no-key first-run gates under the current configuration. See [package.json](package.json) and inspect the target file before choosing a provider-enabled run.
+
+## 📊 Historical test summary (2025-09-17)
+
+The following counts and metrics were recorded in the dated [master summary](TEST_MASTER_SUMMARY.md). They are archived reports, not newly reproduced results or current CI evidence.
 
 - Suites: 18 passed, 1 skipped (19 total)
 - Tests: 55 passed, 16 skipped (71 total)
@@ -178,11 +188,11 @@ Key signals
   - Banking ≈ P 0.80, R 1.00, F1 0.867
   - AI Research ≈ P 0.767, R 0.933, F1 0.814
 - Routes passed: ask, ask‑json, embeddings, agent, gather‑context, organization‑mode
-- Live smokes ran successfully where applicable
+- The archived summary reports successful live smokes where applicable; this handoff has not rerun them.
 
 See also
-- Full write‑up: TEST_MASTER_SUMMARY.md
-- Latest SSE sample (preflight): Interview/sse_samples/ai_research.preflight.sse.log
+- Dated write-up: [TEST_MASTER_SUMMARY.md](TEST_MASTER_SUMMARY.md)
+- Archived preflight sample: [ai_research.preflight.sse.log](Interview/sse_samples/ai_research.preflight.sse.log)
 
 
 ## 🔐 Authentication
@@ -206,28 +216,13 @@ PUBLIC_TEST_USER_ID=demo-user-456
 
 ### Mini-Eval Example
 
-```javascript
-// Define test cases
-const testCases = [
-  {
-    input: "Analyze competitor Stripe",
-    expectedTags: ["analysis", "competitor", "Stripe"],
-    expectedActions: ["search", "analyze", "report"]
-  }
-];
+The [compact script](scripts/demo_eval.ts) reads [banking](Interview/dataset/banking_toy_examples.json) and [AI research](Interview/dataset/ai_research_toy_examples.json) fixtures. Entries use the `Example` fields in [lib/eval/mini.ts](lib/eval/mini.ts): `id`, `prompt`, `bullets` and `expected_tags`.
 
-// Run evaluation
-npm run -s demo:eval:compact
-
-// Output
-// Precision: 0.95
-// Recall: 0.88
-// F1 Score: 0.91
-```
+Run `npm run -s demo:eval:compact` for the metrics from your checkout. The scorer uses tag/synonym string matching; those fixture scores do not measure general model capability.
 
 ### SSE Trace Analysis
 
-Captured traces show complete agent execution:
+Illustrative SSE event shapes (inspect the archived samples for their original context):
 
 ```jsonl
 {"type":"tool_call","name":"search","args":{"query":"AGI safety"}}
@@ -236,52 +231,34 @@ Captured traces show complete agent execution:
 {"type":"final","summary":"Created 3 notes with 15 citations"}
 ```
 
-## 🚦 Environment Variables
+## 🚦 Environment Variables and integration limits
 
-```bash
-# Required for live tests (optional for mocked)
-OPENAI_API_KEY=sk-your-key
+These names are read by the project source; values belong in the intended process environment:
 
-# Optional configurations
-OPENAI_BASE_URL=https://api.openai.com/v1  # Custom endpoint
-PUBLIC_TEST_USER_ID=demo-user-123          # Default user ID
-OPENAI_MODEL=gpt-5-mini                    # Model selection
-```
+| Variable | Source behavior |
+|----------|-----------------|
+| `OPENAI_API_KEY` | Controls Jest discovery; provider-using handlers also require it before import. Mocked route tests supply a dummy value internally. |
+| `PUBLIC_TEST_USER_ID`, `NEXT_PUBLIC_HARDCODED_USER_ID` | Supply the deterministic test identity when no override header is used; they are not authentication. |
+| `OPENAI_REAL_TESTS` | Additional opt-in for the saved-log judge in `live.smoke.eval.test.ts`; nonempty values are truthy. |
+| `AGENT_PREFLIGHT` | Requests deterministic known-scenario handling; Jest worker presence also enables that path. |
 
-## 📈 Performance Considerations
+Model choices are configured by the handler request schemas or source calls. There is no project-level `OPENAI_MODEL` environment read. SDK-specific environment behavior is not established by these notes.
 
-- **Streaming**: All endpoints support SSE for real-time feedback
-- **Retry Logic**: Built-in exponential backoff for rate limits
-- **Batching**: Embeddings endpoint handles up to 100 texts per request
-- **Caching**: Deterministic test harness enables result caching
+The host application must supply runtime modules, service adapters and production authentication. The test mappings and deterministic user identity do not establish production readiness, ownership isolation or deployed endpoints.
 
 ## 🎓 Learning Resources
 
-1. **Start Here**: `Interview/TEST_MASTER_SUMMARY.md` - Overview of test patterns
-2. **Deep Dive**: `Interview/INTERVIEW_GUIDE.md` - Complete walkthrough with examples
-3. **SSE Samples**: `Interview/sse_samples/` - Real execution traces
-4. **Datasets**: `Interview/dataset/` - Sample evaluation data
+1. [Historical master summary](TEST_MASTER_SUMMARY.md) — dated test patterns and archived results.
+2. [Interview guide](Interview/INTERVIEW_GUIDE.md) — walkthrough material.
+3. [SSE samples](Interview/sse_samples/) — archived execution traces.
+4. [Datasets](Interview/dataset/) — committed toy evaluation data.
+5. [Change histories](CHANGELOG/README.md) — setup corrections, proof and limits.
 
 ## 🛠️ Development Workflow
 
-1. **Local Development**
-   ```bash
-   # Use mocked tests for rapid iteration
-   npm test -- --watch
-   ```
-
-2. **Integration Testing**
-   ```bash
-   # Test with real API
-   OPENAI_API_KEY=sk-test npm test
-   ```
-
-3. **Production Deployment**
-   ```bash
-   # Add auth middleware
-   # Configure production env vars
-   # Deploy to your platform
-   ```
+1. Use the no-key mocked selection above for local handler work. `npm test -- --watch` invokes Jest watch mode with the same discovery rules.
+2. Select an exact provider-backed suite only when that behavior is intended; review its flags and log prerequisites.
+3. Integrate and verify handlers inside your actual host application before making deployment or authentication claims.
 
 ## 🤝 Contributing
 
@@ -293,4 +270,4 @@ We welcome contributions! Areas of interest:
 
 ---
 
-Built with ❤️ for the AI engineering community. Start with mocked tests, iterate quickly, and deploy with confidence.
+Start with the mocked harness, then verify the behavior and integration you actually intend to use.
